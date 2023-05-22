@@ -56,47 +56,47 @@ async def managegm(inter, gamename: str, icon_url: str, ip: str, port: int):
     await inter.response.edit_message(content=f"Игра {gamename} добавлена в список", view=None)
 
 
-# ---------------------------------------
+#---------------------------------------------------------------------------------------------------------------
+
+
+
+
 @bot.slash_command(name='online', help="1", description="displays some infos")
 async def online(inter):
-
     try:
-        selected_option = None
         options_list = [param['name'] for param in params]
         options = [SelectOption(label=option, value=option, default=0) for option in options_list]
         select = Select(options=options, placeholder="Игра", custom_id="gamePicker")
 
         await inter.response.send_message("Выберите игру:", components=[select], ephemeral=True, delete_after=40)
 
-        @bot.event
-        async def on_message_interaction(interaction):
-            nonlocal selected_option
-            if interaction.data.custom_id == 'gamePicker':
-                try:
-                    print("passed #1")
-                    selected_option = interaction.data.values[0]
-                    #await interaction.response.edit_message(content=selected_option, view=None)
-                except Exception as error:
-                    await interaction.send(str(error), ephemeral=True)
-
-        print("passed #2")
-        await bot.wait_for("message_interaction", check=lambda i: i.component.custom_id == 'gamePicker')
-        print("passed #3")
-        print(f"{selected_option}")
-        for param in params:
-            if param['name'] == selected_option:
-                server = JavaServer.lookup(f"{param['ip']}:" + str(param['port']))
-                status = server.status()
-                message = f"На сервере {param['name']} сейчас играют {status.players.online} игроков."
-                await inter.send(str(message), ephemeral=True)
-                print("passed #4")
-                break
-        print("passed #final")
     except asyncio.TimeoutError as er:
         await inter.send("Превышено время ожидания выбора игры." + str(er), ephemeral=True)
     except Exception as error:
         await inter.send(str(error), ephemeral=True)
 
+    @bot.event
+    async def on_message_interaction(inter):
+        try:
+            if inter.type == disnake.InteractionType.component and inter.data.get("custom_id") == 'gamePicker':
+                selected_option = inter.data.get("values")[0]
+                for param in params:
+                    if param['name'] == selected_option:
+                        server = JavaServer.lookup(f"{param['ip']}:{str(param['port'])}")
+                        status = server.status()
+                        message = f"На сервере {param['name']} сейчас играют {status.players.online} игроков."
+                        #await inter.response.edit_message(content=message, view=None, ephemeral = False)
+
+                        await inter.channel.send(content=message)
+                        break
+        except Exception as error:
+            await inter.send(str(error), ephemeral=False)
+
+
+
+
+
+#---------------------------------------------------------------------------------------------------------------
 
 @bot.command(name="who_online", aliases=["getplrlist", "who"])
 async def whoonline(ctx):
