@@ -1,0 +1,50 @@
+{
+  "config": {
+    	"token": "secret",
+    	"prefix": "!",
+    	"webhookurls": [
+      	"secret1",
+		"secret2"
+    	],
+    	"ControlMessageID": secretINT1,
+    	"GuildID": secretINT2
+  },
+  "params": [
+    	{
+      	"name": "Minecraft",
+      	"iconURL": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/977e8c4f-1c99-46cd-b070-10cd97086c08/d36qrs5-017c3744-8c94-4d47-9633-d85b991bf2f7.png/v1/fill/w_512,h_512,q_80,strp/minecraft_hd_icon___mac___pc_by_hunterkharon_d36qrs5-fullview.jpg",
+      	"isStaticIP": false,
+      	"ip": "",
+      	"port": 25565,
+      	"emojiID": 1108834870685339771,
+		"isEnabled": true
+    	},
+    	{
+      	"name": "Rust",
+      	"iconURL": "",
+      	"isStaticIP": false,
+      	"ip": "",
+      	"port": 28016,
+      	"emojiID": 1108834884635611207, 
+		"isEnabled": false
+    	},
+    	{
+      	"name": "Unturned",
+      	"iconURL": "https://play-lh.googleusercontent.com/-PFL-i4UXCptec5i_qB14ZHmFSyDmAQtDtj6wj_J3Ti0JvgIlVivJlWsJXMcL--8ape6",
+      	"isStaticIP": true,
+      	"ip": "46.174.52.137",
+      	"port": 40550,
+      	"emojiID": 0, 
+		"isEnabled": true
+    	},
+	{
+      	"name": "SCP Secret Lab",
+      	"iconURL": "https://upload.wikimedia.org/wikipedia/commons/8/89/SCP_Secret_Laboratory_Logo.png",
+      	"isStaticIP": false,
+      	"ip": "",
+      	"port": 7777,
+      	"emojiID": 0, 
+		"isEnabled": true
+    }
+  ]
+}
