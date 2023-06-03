@@ -1,8 +1,9 @@
 import json
+import os
 
 import disnake
 import disnake.ext.commands as commands
-from disnake import  SelectOption
+from disnake import SelectOption, RawReactionActionEvent
 import requests
 import asyncio
 import subprocess
@@ -12,7 +13,7 @@ from disnake.ui import Select
 from datetime import datetime, date, timedelta
 
 from bot_handler import load
-
+AtCapacity = None
 
 class GameSpec(commands.Cog):
     def __init__(self, bot):
@@ -33,28 +34,29 @@ class GameSpec(commands.Cog):
         ip = data["origin"]
         return ip
 
-    def start(self):
+    def start(self, gamename,servname, avatarurl, ip, port):
         time_launched = datetime.now().time()
         print("started")
         ip = self.getIP()
 
         data = {
-            "username": f"{self.params[0]['name']} Server alert",
-            "avatar_url": self.params[0]['iconURL'],
+            "username": f"{gamename} Server alert",
+            "avatar_url": avatarurl,
             "embeds": [
                 {
-                    "title": f"{self.params[0]['name']} server status",
-                    "description": f"\nСервер запущен!\nIP: {ip}, Port: 25565\n```{ip}:25565```\nВремя запуска: {time_launched.strftime('%H:%M:%S')}",
+                    "title": f"{servname} server status",
+                    "description": f"\nСервер включён!\nIP: {ip}, Port: {port}\n```{ip}:{port}```\nВремя запуска: {time_launched.strftime('%H:%M:%S') }\n Некоторые сервера могут запускаться до 10 минут, дождитесь загрузки!",
                     "color": 0x00FF00
                 }
             ]
         }
         for url in self.config['webhookurls']:
             requests.post(url, json=data)
+        AtCapacity = gamename
         with open("time.txt", 'w') as inp:
             inp.write(str(time_launched))
 
-    def stop(self):
+    def stop(self, gamename, iconurl):
         with open("time.txt", 'r') as gettime:
             time_launched = datetime.strptime(gettime.readline(), '%H:%M:%S.%f').time()
         print("finishing...")
@@ -64,11 +66,11 @@ class GameSpec(commands.Cog):
                                                                                            time_launched)).total_seconds()
 
         data = {
-            "username": f"{self.params[0]['name']} Server alert",
-            "avatar_url": self.params[0]['iconURL'],
+            "username": f"{gamename} Server alert",
+            "avatar_url": iconurl,
             "embeds": [
                 {
-                    "title": f"{self.params[0]['name']} server status",
+                    "title": f"{gamename} server status",
                     "description": f"\nСервер был остановлен. Время остановки: {time_stopped.strftime('%H:%M:%S')}\nСервер проработал={timedelta(seconds=seconds_elapsed)}",
                     "color": 0x8B0000
                 }
@@ -76,33 +78,89 @@ class GameSpec(commands.Cog):
         }
         for url in self.config['webhookurls']:
             requests.post(url, json=data)
-
-    async def put_reaction_routine(self):
-        channel = self.bot.get_channel(self.config['GuildID'])
-        message = await channel.fetch_message(self.config['ControlMessageID'])
-        await message.clear_reactions()
-        for param in self.params:
-            emoji_id = param['emojiID']
-            if emoji_id != "" and emoji_id != 0:
-                emoji = self.bot.get_emoji(emoji_id)
-                await message.add_reaction(emoji)
+        AtCapacity = None
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        if payload.message_id == self.config['ControlMessageID']:
-            channel = self.bot.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
-            reaction = disnake.utils.find(lambda r: r.emoji.name == payload.emoji.name, message.reactions)
-            user = self.bot.get_user(payload.user_id)
+    async def on_ready(self):
+        await self.put_reaction_routine()
 
-            if reaction and user and reaction.count > 2 and user != self.bot.user:
+    @commands.command(name="myip")
+    @commands.is_owner()
+    async def giveIP(self, ctx):
+        await ctx.send(content=str(self.getIP()))
+
+    async def put_reaction_routine(self):
+        try:
+            guilds_dep = self.config["guildsDep"]
+            for guild_id, control_message_id in guilds_dep.items():
+
+                channel = self.bot.get_channel(int(guild_id))
+                message = await channel.fetch_message(control_message_id)
                 await message.clear_reactions()
-                subprocess.Popen(
-                    ["C:\\Windows\\System32\\cmd.exe", "/c", r"D:\\GAMES\\MinecraftServerVanilla\\START.bat", "1"],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE)
-                self.start()
-                await asyncio.sleep(7200)
-                await self.put_reaction_routine()
+                for param in self.params:
+                    emoji_id = param['emojiID']
+                    if emoji_id != "" and emoji_id != 0:
+                        emoji = self.bot.get_emoji(emoji_id)
+                        await message.add_reaction(emoji)
+        except Exception as e:
+            pass
+
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        guilds_dep = self.config["guildsDep"]
+        for guild_id, control_message_id in guilds_dep.items():
+            if payload.message_id == control_message_id:
+                channel = self.bot.get_channel(payload.channel_id)
+                message = await channel.fetch_message(payload.message_id)
+                reaction = disnake.utils.find(lambda r: r.emoji.name == payload.emoji.name, message.reactions)
+
+                user = self.bot.get_user(payload.user_id)
+
+
+                if reaction and user and reaction.count > 2 and user != self.bot.user:
+                    if AtCapacity != None:
+                        print("busy by ",AtCapacity)
+                        break
+                    await message.clear_reactions()
+                    for param in self.params:
+                        if str(reaction.emoji.id) == str(param['emojiID']):
+                            if param['isStaticIP']==True:
+                                ip =param['ip']
+                            else:
+                                ip = self.getIP()
+                            self.start(param['game'],param['name'] , param['iconURL'], ip, param['port'])
+                            print('launched')
+                            abs_path = os.path.abspath(param['pathToExecutorScript'])
+                            directory = os.path.dirname(abs_path)
+
+                            proc = None
+                            if abs_path.endswith('.exe'):
+                                proc = subprocess.Popen(
+                                    ['cd', '/d', directory, '&&', 'start', '', abs_path] + [str(param['port'])], shell=True,
+                                    creationflags=subprocess.CREATE_NEW_CONSOLE)
+                            elif abs_path.endswith('.bat'):
+                                proc = subprocess.Popen(
+                                    ['C:\Windows\System32\cmd.exe', '/c', 'start', '/wait', '', f'{abs_path}', str(param['port'])],
+                                    shell=True,
+                                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                                    cwd=directory
+                                )
+
+
+
+
+
+
+                            else:
+                                print('Unsupported file type')
+                            return_code = proc.wait()
+                            if return_code == 0:
+                                self.stop(param['game'], param['iconURL'])
+                            break
+
+                    await asyncio.sleep(7200)
+                    await self.put_reaction_routine()
 
     @commands.slash_command(name='managegame', help="allows you to change add custom game to spectrate",
                             description="allows you to change add custom game to spectrate")
@@ -131,7 +189,7 @@ class GameSpec(commands.Cog):
             if inter.type == disnake.InteractionType.component and inter.data.get("custom_id") == 'gamePicker':
                 await inter.response.defer()
                 selected_option = inter.data.get("values")[0]
-                inter.send(content=selected_option)
+                # await inter.send(content=selected_option)
                 for param in self.params:
                     if param['name'] == selected_option:
                         if selected_option == "Minecraft":
@@ -173,9 +231,8 @@ class GameSpec(commands.Cog):
             message = str(error)
             if '[WinError 10061]' in str(error):
                 message = 'Не удалось проверить. Сервер точно запущен 🤨?'
-            await inter.send(message, ephemeral=False)
+            await inter.followup.send(content=message)
 
 
 def setup(bot):
     bot.add_cog(GameSpec(bot))
-

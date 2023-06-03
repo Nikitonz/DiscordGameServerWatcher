@@ -57,6 +57,7 @@ async def reload_cog(ctx, extension):
         await ctx.send(f"Error reloading cog '{extension}': {e}")
 
 
+
 if __name__ == '__main__':
     bot.loop.run_until_complete(load_cog())
 

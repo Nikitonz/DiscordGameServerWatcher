@@ -1,50 +1,60 @@
 {
-  "config": {
-    	"token": "secret",
+	"config": {
+		"token": "1",
     	"prefix": "!",
     	"webhookurls": [
-      	"secret1",
-		"secret2"
+			"2"
     	],
-    	"ControlMessageID": secretINT1,
-    	"GuildID": secretINT2
-  },
-  "params": [
-    	{
-      	"name": "Minecraft",
-      	"iconURL": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/977e8c4f-1c99-46cd-b070-10cd97086c08/d36qrs5-017c3744-8c94-4d47-9633-d85b991bf2f7.png/v1/fill/w_512,h_512,q_80,strp/minecraft_hd_icon___mac___pc_by_hunterkharon_d36qrs5-fullview.jpg",
-      	"isStaticIP": false,
-      	"ip": "",
-      	"port": 25565,
-      	"emojiID": 1108834870685339771,
-		"isEnabled": true
+		"guildsDep": {
+			"channel1": message1,
+			"channel2": message2
+		}
+    	
+	},
+	"params": [
+		{
+			"game": "Minecraft",
+			"name": "None",
+			"iconURL": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/977e8c4f-1c99-46cd-b070-10cd97086c08/d36qrs5-017c3744-8c94-4d47-9633-d85b991bf2f7.png/v1/fill/w_512,h_512,q_80,strp/minecraft_hd_icon___mac___pc_by_hunterkharon_d36qrs5-fullview.jpg",
+			"isStaticIP": false,
+			"ip": "",
+			"port": 28015,
+			"emojiID": 1108834870685339771,
+			"pathToExecutorScript": "D:\\GAMES\\MinecraftServerVanilla\\START.bat",
+			"isEnabled": true
     	},
     	{
-      	"name": "Rust",
-      	"iconURL": "",
-      	"isStaticIP": false,
-      	"ip": "",
-      	"port": 28016,
-      	"emojiID": 1108834884635611207, 
-		"isEnabled": false
+			"game": "Rust",
+			"name": "Server by Pioneer",
+			"iconURL": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZrmPpsTiDj23pJJkTMcztblDe1Npufeizazw5OZpYd3ia29ALuR4-Ww_3Y6nB4vHI2yk&usqp=CAU",
+			"isStaticIP": false,
+			"ip": "",
+			"port": 28015,
+			"emojiID": 1113436137621557328, 
+			"pathToExecutorScript": "H:\\GAMES\\RustServer\\Start.bat",
+			"isEnabled": true
     	},
     	{
-      	"name": "Unturned",
-      	"iconURL": "https://play-lh.googleusercontent.com/-PFL-i4UXCptec5i_qB14ZHmFSyDmAQtDtj6wj_J3Ti0JvgIlVivJlWsJXMcL--8ape6",
-      	"isStaticIP": true,
-      	"ip": "46.174.52.137",
-      	"port": 40550,
-      	"emojiID": 0, 
-		"isEnabled": true
+			"game": "Unturned",
+			"name": "[EU | RU | BY | UA]  Artifact Project ",
+			"iconURL": "https://play-lh.googleusercontent.com/-PFL-i4UXCptec5i_qB14ZHmFSyDmAQtDtj6wj_J3Ti0JvgIlVivJlWsJXMcL--8ape6",
+			"isStaticIP": true,
+			"ip": "46.174.52.137",
+			"port": 40550,
+			"emojiID": 0,
+			"pathToExecutorScript": "",
+			"isEnabled": true
     	},
 	{
-      	"name": "SCP Secret Lab",
-      	"iconURL": "https://upload.wikimedia.org/wikipedia/commons/8/89/SCP_Secret_Laboratory_Logo.png",
-      	"isStaticIP": false,
-      	"ip": "",
-      	"port": 7777,
-      	"emojiID": 0, 
-		"isEnabled": true
+			"game": "SCP Secret Lab",
+			"name": "Artifact | SCP SL game project",
+			"iconURL": "https://upload.wikimedia.org/wikipedia/commons/8/89/SCP_Secret_Laboratory_Logo.png",
+			"isStaticIP": false,
+			"ip": "",
+			"port": 7777,
+			"emojiID": 1113436718985642004, 
+			"pathToExecutorScript": "D:\\Steam\\steamapps\\common\\SCP Secret Laboratory Dedicated Server\\LocalAdmin.exe",
+			"isEnabled": true
     }
   ]
 }

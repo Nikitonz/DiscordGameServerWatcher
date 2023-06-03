@@ -24,8 +24,8 @@ cls
 @echo 6) восстановить миры
 @echo 0) выход
 :optionality
-set /p option="Введите числовую опцию: "
-if "%option%"=="" set "option=1"
+set option=2
+if "%option%"=="" set "option=7"
 
 
 if "%option%"=="1" goto option1
@@ -38,13 +38,13 @@ if "%option%">"6" OR "%option%"<"1" goto end
 goto invalidOption
 
 :option1
-python3 bot_handler.py start
+python -c "from bot_handler import start; start()"
 java -Xmx1024M -Xms1024M -jar spigot-1.19.4.jar nogui
-python3 main.py stop
+python -c "from bot_handler import stop; stop()"
 goto end
 
 :option2
-java -Xmx1024M -Xms1024M -jar spigot-1.19.4.jar nogui
+java -Xmx1024M -Xms1024M -jar %sourceFolder%\spigot-1.19.4.jar nogui
 goto end
 
 :option3
@@ -58,7 +58,7 @@ if "%option%"=="n" goto end )
 else 
 rem Копирование папок world, world-nether, world_the_end в папку SAVES_bak
 xcopy /s /e /i /y "%sourceFolder%\world" "%targetFolder%\world"
-xcopy /s /e /i /y "%sourceFolder%\world_nether" "%targetFolder%\world-nether"
+xcopy /s /e /i /y "%sourceFolder%\world_nether" "%targetFolder%\world_nether"
 xcopy /s /e /i /y "%sourceFolder%\world_the_end" "%targetFolder%\world_the_end"
 goto end
 
@@ -79,13 +79,13 @@ else (if not "%option%"=="y" or  not "%option%"=="n" goto option5)
 set /p option="Восстановить резервную копию? ("newest_bak"/"oldest_bak"): "
 if "%option%"=="newest_bak" (
 xcopy /s /e /i /y "%targetFolder%\world" "%sourceFolder%\world"
-xcopy /s /e /i /y "%targetFolder%\world_nether" "%sourceFolder%\world-nether"
+xcopy /s /e /i /y "%targetFolder%\world_nether" "%sourceFolder%\world_nether"
 xcopy /s /e /i /y "%targetFolder%\world_the_end" "%sourceFolder%\world_the_end"
 )
 else (if "%option%"=="oldest_bak" 
 (
 xcopy /s /e /i /y "%backupFolder%\world" "%sourceFolder%\world"
-xcopy /s /e /i /y "%backupFolder%\world_nether" "%sourceFolder%\world-nether"
+xcopy /s /e /i /y "%backupFolder%\world_nether" "%sourceFolder%\world_nether"
 xcopy /s /e /i /y "%backupFolder%\world_the_end" "%sourceFolder%\world_the_end")
 )
 else goto optionality
@@ -95,4 +95,7 @@ echo Некорректная опция
 goto optionality
 
 :end
+pause
 exit
+
+pause
