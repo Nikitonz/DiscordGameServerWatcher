@@ -1,5 +1,6 @@
 import json
 import os
+from json import JSONDecodeError
 
 import disnake
 import disnake.ext.commands as commands
@@ -20,23 +21,20 @@ class GameSpec(commands.Cog):
         self.bot = bot
         self.config, self.params = load("config.json")
 
-    def load(fileP):
-        with open(fileP, 'r') as file:
-            data = json.load(file)
-        config = data.get('config', [])
-        params_all = data.get('params', [])
-        params = [param for param in params_all if param.get('isEnabled', True)]
-        return (config, params)
-
     def getIP(self):
-        response = requests.get("https://httpbin.org/ip")
-        data = response.json()
-        ip = data["origin"]
-        return ip
+        ip = None
+        try:
+            response = requests.get("https://httpbin.org/ip")
+            data = response.json()
+            ip = data["origin"]
+            return ip
+        except JSONDecodeError as e:
+            print('error getting ip')
 
-    def start(self, gamename,servname, avatarurl, ip, port):
+
+    async def start(self, gamename,servname, avatarurl, ip, port):
         time_launched = datetime.now().time()
-        print("started")
+        print("started ", {gamename})
         ip = self.getIP()
 
         data = {
@@ -52,14 +50,15 @@ class GameSpec(commands.Cog):
         }
         for url in self.config['webhookurls']:
             requests.post(url, json=data)
-        AtCapacity = gamename
+        global AtCapacity
+        AtCapacity =gamename
         with open("time.txt", 'w') as inp:
             inp.write(str(time_launched))
 
     def stop(self, gamename, iconurl):
         with open("time.txt", 'r') as gettime:
             time_launched = datetime.strptime(gettime.readline(), '%H:%M:%S.%f').time()
-        print("finishing...")
+        print("finishing...", {gamename},"========================")
 
         time_stopped = datetime.now().time()
         seconds_elapsed = (datetime.combine(date.today(), time_stopped) - datetime.combine(date.today(),
@@ -78,6 +77,7 @@ class GameSpec(commands.Cog):
         }
         for url in self.config['webhookurls']:
             requests.post(url, json=data)
+        global AtCapacity
         AtCapacity = None
 
     @commands.Cog.listener()
@@ -88,6 +88,9 @@ class GameSpec(commands.Cog):
     @commands.is_owner()
     async def giveIP(self, ctx):
         await ctx.send(content=str(self.getIP()))
+
+
+
 
     async def put_reaction_routine(self):
         try:
@@ -105,9 +108,18 @@ class GameSpec(commands.Cog):
         except Exception as e:
             pass
 
+    @commands.command(name="enforce_poll", aliases=['ep'])
+    @commands.is_owner()
+    async def enforce_startup(self, ctx):
+        await self.put_reaction_routine()
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        async def delayed_reaction_routine():
+            await asyncio.sleep(7200)
+            await self.put_reaction_routine()
+
         guilds_dep = self.config["guildsDep"]
         for guild_id, control_message_id in guilds_dep.items():
             if payload.message_id == control_message_id:
@@ -117,50 +129,46 @@ class GameSpec(commands.Cog):
 
                 user = self.bot.get_user(payload.user_id)
 
-
-                if reaction and user and reaction.count > 2 and user != self.bot.user:
-                    if AtCapacity != None:
-                        print("busy by ",AtCapacity)
+                if reaction and user and reaction.count > 3 and user != self.bot.user:
+                    global AtCapacity
+                    if AtCapacity is not None:
+                        print("busy by ", AtCapacity)
                         break
                     await message.clear_reactions()
+                    asyncio.create_task(delayed_reaction_routine())
                     for param in self.params:
                         if str(reaction.emoji.id) == str(param['emojiID']):
-                            if param['isStaticIP']==True:
-                                ip =param['ip']
+                            if param['isStaticIP']:
+                                ip = param['ip']
                             else:
                                 ip = self.getIP()
-                            self.start(param['game'],param['name'] , param['iconURL'], ip, param['port'])
+                            await self.start(param['game'], param['name'], param['iconURL'], ip, param['port'])
                             print('launched')
                             abs_path = os.path.abspath(param['pathToExecutorScript'])
                             directory = os.path.dirname(abs_path)
 
                             proc = None
                             if abs_path.endswith('.exe'):
-                                proc = subprocess.Popen(
-                                    ['cd', '/d', directory, '&&', 'start', '', abs_path] + [str(param['port'])], shell=True,
-                                    creationflags=subprocess.CREATE_NEW_CONSOLE)
+                                command = ['cd', '/d', directory, '&&', 'start', '', abs_path] + [str(param['port'])]
+                                proc = subprocess.Popen(command, shell=True,
+                                                              creationflags=subprocess.CREATE_NEW_CONSOLE)
+                                return_code = proc.wait()
+                                if return_code == 0:
+                                    self.stop(param['game'], param['iconURL'])
                             elif abs_path.endswith('.bat'):
                                 proc = subprocess.Popen(
-                                    ['C:\Windows\System32\cmd.exe', '/c', 'start', '/wait', '', f'{abs_path}', str(param['port'])],
+                                    ['C:\Windows\System32\cmd.exe', '/c', 'start', '/wait', '', f'{abs_path}',
+                                     str(param['port'])],
                                     shell=True,
                                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                                     cwd=directory
                                 )
-
-
-
-
-
-
+                                return_code = proc.wait()
+                                if return_code == 0:
+                                    self.stop(param['game'], param['iconURL'])
                             else:
                                 print('Unsupported file type')
-                            return_code = proc.wait()
-                            if return_code == 0:
-                                self.stop(param['game'], param['iconURL'])
                             break
-
-                    await asyncio.sleep(7200)
-                    await self.put_reaction_routine()
 
     @commands.slash_command(name='managegame', help="allows you to change add custom game to spectrate",
                             description="allows you to change add custom game to spectrate")
@@ -171,7 +179,7 @@ class GameSpec(commands.Cog):
     @commands.slash_command(name='online', help="1", description="displays some infos")
     async def online(self, inter):
         try:
-            options_list = [param['name'] for param in self.params]
+            options_list = [param['game'] for param in self.params]
             options = [SelectOption(label=option, value=option, default=0) for option in options_list]
             select = Select(options=options, placeholder="Игра", custom_id="gamePicker")
 
@@ -191,7 +199,7 @@ class GameSpec(commands.Cog):
                 selected_option = inter.data.get("values")[0]
                 # await inter.send(content=selected_option)
                 for param in self.params:
-                    if param['name'] == selected_option:
+                    if param['game'] == selected_option:
                         if selected_option == "Minecraft":
                             if param['isStaticIP']:
                                 current_ip = param['ip']
