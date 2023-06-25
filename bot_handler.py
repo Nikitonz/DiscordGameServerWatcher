@@ -5,6 +5,8 @@ import json
 import disnake
 import sys
 
+from disnake import Embed
+
 config = None
 params = None
 
@@ -21,7 +23,7 @@ def load(fileP):
 (config, params) = load("config.json")
 
 intents = disnake.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=config['prefix'], intents=intents)
 
 logs_directory = 'logs'
 os.makedirs(logs_directory, exist_ok=True)
@@ -33,7 +35,11 @@ log_file = open(log_file_path, 'a')
 
 @bot.event
 async def on_ready():
-    log_message(f"Logged in as {bot.user.name} ({bot.user.id})")
+    log_message(f"Logged in as {bot.user.name} ({bot.user.id})\n\n")
+    await bot.change_presence(activity=disnake.Activity(type=disnake.ActivityType.listening, name='/help'))
+    #await bot.change_presence(activity=disnake.Game(name='Играет в /play'))
+
+
 
 
 async def load_cog():
@@ -41,8 +47,6 @@ async def load_cog():
         if file.endswith(".py"):
             bot.load_extension(f"cogs.{file[:-3]}")
             log_message(f"The cog {file[:-3]} has been loaded.")
-
-
 @bot.command(name='unload_cog')
 @commands.is_owner()
 async def unload_cog(ctx, extension):
@@ -82,7 +86,15 @@ async def perform_shutting_down(ctx, time):
         await ctx.send(f"{e} fuck...")
         log_message(f"Error performing shutdown: {e}")
 
-
+@bot.command(name='logoff')
+@commands.is_owner()
+async def perform_logoff(ctx):
+    try:
+       log_file.write('\n')
+       log_file.flush()
+       await bot.close()
+    except Exception as e:
+       pass
 def log_message(message):
     current_time = datetime.datetime.now()
     log_entry = f"[{current_time:%d.%m.%Y %H:%M:%S}] {message}"
@@ -91,14 +103,33 @@ def log_message(message):
     log_file.flush()
 
 
-# Redirect stdout to the log_file
-sys.stdout = log_file
 
+#sys.stdout = log_file
+bot.remove_command('help')
+
+
+@bot.slash_command(name="help")
+async def help_command(ctx):
+    import random
+    emb1: Embed = disnake.Embed(title=str("Информация о командах").center(100), color=random.randint(1, 16777216),
+                                type='rich', timestamp=datetime.datetime.now())
+
+    emb1.add_field(name=f"`{config['prefix']}vip-tutorial (vt)` : ", value="Эксклюзивная помощь", inline=True)
+    emb1.add_field(name=f"`{config['prefix']}help` : ", value="Вызовет это меню", inline=True)
+    emb1.add_field(name=f"`{config['prefix']}unload_cog <cogName>` : ", value="Отключить дополнение (только владелец)", inline=False)
+    emb1.add_field(name=f"`{config['prefix']}reload_cog <cogName>` : ", value="Перегружает дополнение (только владелец)", inline=True)
+    emb1.add_field(name=f"`{config['prefix']}shutdown [a|int]` : ", value="Выключить ПК (только владелец)", inline=False)
+    emb1.add_field(name=f"`{config['prefix']}logoff` : ", value="Выключает бота (только владелец)", inline=True)
+    emb1.add_field(name=f"`{config['prefix']}enforce_poll (ep)` : ", value="Принудительные реакции (только владелец)", inline=True)
+    emb1.add_field(name=f"`{config['prefix']}myip` : ", value="IP сервера (только владелец)", inline=False)
+    emb1.add_field(name=f"`/managegm <*args>` : ", value="Добавление своей игры (только владелец)(в разработке)", inline=False)
+    emb1.add_field(name=f"`/online` : ", value="Узнать число игроков онлайн", inline=True)
+    emb1.add_field(name=f"`/role` : ", value="Управление ролями (доступ к контенту)", inline=False)
+
+    message = await ctx.send(embed = emb1)
 
 if __name__ == '__main__':
-    log_message("Bot started.")
     bot.loop.run_until_complete(load_cog())
 
     bot.run(config['token'])
-
     log_file.close()

@@ -30,7 +30,7 @@ class GameSpec(commands.Cog):
             return ip
         except JSONDecodeError as e:
             print('error getting ip')
-
+            return 0
 
     async def start(self, gamename,servname, avatarurl, ip, port):
         time_launched = datetime.now().time()
@@ -84,10 +84,10 @@ class GameSpec(commands.Cog):
     async def on_ready(self):
         await self.put_reaction_routine()
 
-    @commands.command(name="myip")
+    @commands.slash_command(name="myip")
     @commands.is_owner()
-    async def giveIP(self, ctx):
-        await ctx.send(content=str(self.getIP()))
+    async def myip(self, inter: disnake.ApplicationCommandInteraction):
+        await inter.send(content=str(self.getIP()), ephemeral = True, delete_after = 30)
 
 
 
@@ -126,49 +126,54 @@ class GameSpec(commands.Cog):
                 channel = self.bot.get_channel(payload.channel_id)
                 message = await channel.fetch_message(payload.message_id)
                 reaction = disnake.utils.find(lambda r: r.emoji.name == payload.emoji.name, message.reactions)
+                for param in self.params:
+                    if param['emojiID']==reaction.emoji.id:
+                        user = self.bot.get_user(payload.user_id)
 
-                user = self.bot.get_user(payload.user_id)
+                        if reaction and user and reaction.count > param['requiredReactions'] and user != self.bot.user:
+                            global AtCapacity
+                            if AtCapacity is not None:
+                                print("busy by ", AtCapacity)
+                                break
+                            await message.clear_reactions()
+                            asyncio.create_task(delayed_reaction_routine())
+                            for param in self.params:
+                                if str(reaction.emoji.id) == str(param['emojiID']):
+                                    if param['isStaticIP']:
+                                        ip = param['ip']
+                                    else:
+                                        ip = self.getIP()
+                                    await self.start(param['game'], param['name'], param['iconURL'], ip, param['port'])
+                                    print('launched')
+                                    abs_path = os.path.abspath(param['pathToExecutorScript'])
+                                    directory = os.path.dirname(abs_path)
 
-                if reaction and user and reaction.count > 3 and user != self.bot.user:
-                    global AtCapacity
-                    if AtCapacity is not None:
-                        print("busy by ", AtCapacity)
-                        break
-                    await message.clear_reactions()
-                    asyncio.create_task(delayed_reaction_routine())
-                    for param in self.params:
-                        if str(reaction.emoji.id) == str(param['emojiID']):
-                            if param['isStaticIP']:
-                                ip = param['ip']
-                            else:
-                                ip = self.getIP()
-                            await self.start(param['game'], param['name'], param['iconURL'], ip, param['port'])
-                            print('launched')
-                            abs_path = os.path.abspath(param['pathToExecutorScript'])
-                            directory = os.path.dirname(abs_path)
+                                    proc = None
+                                    if abs_path.endswith('.exe'):
+                                        command = ['cd', '/d', directory, '&&', 'start', '', abs_path] + [
+                                            str(param['port'])]
+                                        proc = subprocess.Popen(command, shell=True,
+                                                                creationflags=subprocess.CREATE_NEW_CONSOLE)
+                                        return_code = proc.wait()
+                                        if return_code == 0:
+                                            self.stop(param['game'], param['iconURL'])
+                                    elif abs_path.endswith('.bat'):
+                                        proc = subprocess.Popen(
+                                            ['C:\Windows\System32\cmd.exe', '/c', 'start', '/wait', '', f'{abs_path}',
+                                             str(param['port'])],
+                                            shell=True,
+                                            creationflags=subprocess.CREATE_NEW_CONSOLE,
+                                            cwd=directory
+                                        )
+                                        return_code = proc.wait()
+                                        if return_code == 0:
+                                            self.stop(param['game'], param['iconURL'])
+                                    else:
+                                        print('Unsupported file type')
+                                    break
+                    else:
+                        continue
 
-                            proc = None
-                            if abs_path.endswith('.exe'):
-                                command = ['cd', '/d', directory, '&&', 'start', '', abs_path] + [str(param['port'])]
-                                proc = subprocess.Popen(command, shell=True,
-                                                              creationflags=subprocess.CREATE_NEW_CONSOLE)
-                                return_code = proc.wait()
-                                if return_code == 0:
-                                    self.stop(param['game'], param['iconURL'])
-                            elif abs_path.endswith('.bat'):
-                                proc = subprocess.Popen(
-                                    ['C:\Windows\System32\cmd.exe', '/c', 'start', '/wait', '', f'{abs_path}',
-                                     str(param['port'])],
-                                    shell=True,
-                                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                                    cwd=directory
-                                )
-                                return_code = proc.wait()
-                                if return_code == 0:
-                                    self.stop(param['game'], param['iconURL'])
-                            else:
-                                print('Unsupported file type')
-                            break
 
     @commands.slash_command(name='managegame', help="allows you to change add custom game to spectrate",
                             description="allows you to change add custom game to spectrate")
